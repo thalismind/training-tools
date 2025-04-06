@@ -1,0 +1,44 @@
+presets:
+  - name: "Cartoon Character"
+    metadata:
+      description: "Training configuration for cartoon character likeness"
+      flexible: true
+      stable: true
+      version: "1.0"
+    parameters:
+      learning_rate: 1
+      max_steps: 750
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 125
+      sample_every_n_steps: 250
+      network:
+        alpha: 8
+        dim: 8
+        module: networks.lora_flux
+      optimizer:
+        name: prodigy
+        args:
+          betas: [0.9, 0.999]
+          d_coef: 1.5
+          decouple: true
+          safeguard_warmup: false
+          use_bias_correction: false
+          weight_decay: 0.1
+      scheduler:
+        name: cosine
+        cycles: 1
+  - name: "Human Likeness"
+    metadata:
+      description: "Training configuration for human likeness"
+      flexible: true
+      stable: true
+      version: "1.0"
+    inherits:
+      - "Cartoon Character"
+    parameters:
+      optimizer:
+        args:
+          betas: [0.9, 0.99]
+          d_coef: 4
+          weight_decay: 0.2
