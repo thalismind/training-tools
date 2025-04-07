@@ -60,12 +60,18 @@ def build_command(preset, training_name):
 
     timestamp = int(datetime.now().timestamp())
 
+    # If opt_type has a dot, keep the final part
+    if '.' in opt_type:
+        opt_type_name = opt_type.split('.')[-1]
+    else:
+        opt_type_name = opt_type
+
     # TODO: paths
     REMOTE_ROOT = "/workspace"
     FLUX_PATH = "/workspace/flux"
-    DATASET_CONFIG = f"{REMOTE_ROOT}/config/{training_name}/dataset_config.yaml"
+    DATASET_CONFIG = f"{REMOTE_ROOT}/config/{training_name}/dataset.json"
     OUTPUT_DIR = f"{REMOTE_ROOT}/output/{training_name}"
-    OUTPUT_NAME = f"{training_name}-{opt_type}-{lr_sched}-{timestamp}"
+    OUTPUT_NAME = f"{training_name}-{opt_type_name}-{lr_sched}-{timestamp}"
     RESUME_WEIGHTS = f"{OUTPUT_DIR}/weights/{OUTPUT_NAME}.safetensors"
 
     launch_args = [
@@ -154,24 +160,127 @@ def build_command(preset, training_name):
         f"    --sample_prompts {REMOTE_ROOT}/config/{training_name}/sample-prompts.txt \\",
         "    --log_with=all \\",
         f"    --logging_dir {OUTPUT_DIR}/logging/{OUTPUT_NAME} \\",
-        f"    --wandb_run_name={training_name}-{opt_type}-{lr_sched}-{timestamp} \\",
+        f"    --wandb_run_name={training_name}-{opt_type_name}-{lr_sched}-{timestamp} \\",
         f"    {RESUME_WEIGHTS}"
     ]
 
     return "\n".join(lines)
 
 
+import inquirer
+import yaml
+from collections import defaultdict
+
+def wizard(yaml_files):
+    # Load all presets from given YAML files and group them by metadata.category
+    all_presets = []
+    for yaml_file in yaml_files:
+        with open(yaml_file, "r") as f:
+            data = yaml.safe_load(f)
+            for preset in data.get("presets", []):
+                preset["_source_file"] = yaml_file
+                all_presets.append(preset)
+
+    # Group presets by category
+    category_map = defaultdict(list)
+    for preset in all_presets:
+        category = preset.get("metadata", {}).get("category", "uncategorized")
+        category_map[category].append(preset)
+
+    # Ask user which category they want to train
+    category_q = inquirer.prompt([
+        inquirer.List("category", message="What category are you training?", choices=list(category_map.keys()))
+    ])
+    selected_category = category_q["category"]
+
+    # Ask how complex the thing is
+    complexity_q = inquirer.prompt([
+        inquirer.List("complexity", message="How complex is the thing you are training?", choices=["simple", "complex"])
+    ])
+    complexity = complexity_q["complexity"]
+
+    # TODO: Ask about dataset size once we can calculate the step count
+    # dataset_q = inquirer.prompt([
+    #     inquirer.List("dataset", message="How large is your dataset?", choices=[
+    #         "1-10", "10-25", "25-50", "50-100", "100-500", "500-1000",
+    #         "1000-5000", "5k-10k", "10-100k", "100k+"
+    #     ])
+    # ])
+    # dataset_size = dataset_q["dataset"]
+
+    # Ask if using LoRA or LyCORIS
+    lora_type_q = inquirer.prompt([
+        inquirer.List("lora_type", message="Are you using LoRA or LyCORIS?", choices=["lora", "lycoris"])
+    ])
+    lora_type = lora_type_q["lora_type"]
+
+    lycoris_subtype = None
+    if lora_type == "lycoris":
+        subtype_q = inquirer.prompt([
+            inquirer.List("lycoris_subtype", message="What kind of LyCORIS? (loha or lokr)", choices=["loha", "lokr"])
+        ])
+        lycoris_subtype = subtype_q["lycoris_subtype"]
+
+    # Ask whether to enable min_snr_gamma
+    snr_gamma_q = inquirer.prompt([
+        inquirer.Confirm("snr_gamma", message="Enable min SNR gamma?", default=True)
+    ])
+    snr_gamma_enabled = snr_gamma_q["snr_gamma"]
+
+    # Choose a matching preset name based on complexity
+    suffix = "_simple" if complexity == "simple" else "_complex"
+    candidates = [p for p in category_map[selected_category] if p["name"].endswith(suffix)]
+    print(f"Found {len(candidates)} candidates for {suffix} in {selected_category}: {', '.join(p['name'] for p in candidates)}")
+
+    if not candidates:
+        selected_preset = category_map[selected_category][0]
+    else:
+        selected_preset = candidates[0]
+
+    # Ask user to confirm the selected preset
+    confirm_q = inquirer.prompt([
+        inquirer.Confirm("confirm", message=f"Use preset '{selected_preset['name']}'?", default=True)
+    ])
+    if not confirm_q["confirm"]:
+        print("Aborting.")
+        return
+
+    print(f"Using preset: {selected_preset['name']}")
+
+    return {
+        "yaml": selected_preset["_source_file"],
+        "preset": selected_preset["name"],
+        "snr_gamma": snr_gamma_enabled,
+        "lora_type": lora_type,
+        "lycoris_subtype": lycoris_subtype,
+        # "dataset_size": dataset_size,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("preset_name", help="Name of the preset to use")
-    parser.add_argument("--training-name", required=True, help="Training name for logging and prompt paths")
-    parser.add_argument("--yaml", nargs='+', default=["config/effects.yaml", "config/characters.yaml"],
+    parser.add_argument("--sources", nargs='+', default=["config/effects.yaml", "config/characters.yaml"],
                         help="YAML files to load presets from")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--preset", help="Name of the preset to use")
+    group.add_argument("--wizard", action="store_true", help="Run the wizard to select a preset")
+
+    parser.add_argument("training_name", help="Name of the training run")
     args = parser.parse_args()
 
-    presets = load_presets(args.yaml)
-    resolved = resolve_preset(presets, args.preset_name)
-    cmd = build_command(resolved, args.training_name)
+    if args.wizard:
+        result = wizard(args.sources)
+        yaml_files = [result["yaml"]]
+        preset_name = result["preset"]
+        training_name = args.training_name or input("Enter a training name: ")
+    else:
+        yaml_files = args.sources
+        preset_name = args.preset
+        training_name = args.training_name
+
+    presets = load_presets(yaml_files)
+    resolved = resolve_preset(presets, preset_name)
+    cmd = build_command(resolved, training_name)
     print(cmd)
 
 

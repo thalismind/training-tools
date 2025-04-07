@@ -1,6 +1,7 @@
 presets:
-  - name: "Simple Photo Effect"
+  - name: photo_effect_simple
     metadata:
+      category: "photo_effects"
       description: "Training configuration for simple photo effects"
       flexible: true
       stable: true
@@ -25,14 +26,15 @@ presets:
       scheduler:
         name: cosine_with_restarts
         cycles: 2
-  - name: "Complex Photo Effect"
+  - name: photo_effect_complex
     metadata:
+      category: "photo_effects"
       description: "Training configuration for complex photo effects"
       flexible: true
       stable: false
       version: "0.1"
     inherits:
-      - "Simple Photo Effect"
+      - "photo_effect_simple"
     parameters:
       learning_rate: 5e-5
       max_steps: 2500

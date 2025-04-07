@@ -1,6 +1,7 @@
 presets:
-  - name: "Cartoon Character"
+  - name: cartoon_character
     metadata:
+      category: "characters"
       description: "Training configuration for cartoon character likeness"
       flexible: true
       stable: true
@@ -28,14 +29,15 @@ presets:
       scheduler:
         name: cosine
         cycles: 1
-  - name: "Human Likeness"
+  - name: human_likeness
     metadata:
+      category: "characters"
       description: "Training configuration for human likeness"
       flexible: true
       stable: true
       version: "1.0"
     inherits:
-      - "Cartoon Character"
+      - "cartoon_character"
     parameters:
       optimizer:
         args:
