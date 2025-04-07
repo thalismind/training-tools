@@ -36,7 +36,7 @@ def resolve_preset(presets, name):
     return base
 
 
-def build_command(preset, training_name, fp8_base=True, highvram=True, precision="bf16", threads=2):
+def build_command(preset, training_name, fp8_base=True, highvram=True, precision="bf16", threads=2, lycoris_subtype=None):
     p = preset['parameters']
     net = p['network']
     opt = p['optimizer']
@@ -59,6 +59,16 @@ def build_command(preset, training_name, fp8_base=True, highvram=True, precision
         opt_args_strs.append(f'"{k}={v}"')
 
     network_args_strs = ['"train_t5xxl=False"', f'"split_qkv={opt_args.get("split_qkv", False)}"']
+
+    # Additional network arguments for LyCORIS
+    if lycoris_subtype:
+        network_args_strs.extend([
+            f"conv_dim={net['dim']}",
+            f"conv_alpha={net['alpha']}",
+            f"algo={lycoris_subtype}",
+            "bypass_mode=false",
+        ])
+
 
     timestamp = int(datetime.now().timestamp())
 
@@ -269,6 +279,8 @@ def wizard(yaml_files):
             raise SystemExit
 
     print(f"Using preset: {selected_preset['name']}")
+    print(f"Preset source file: {selected_preset['_source_file']}")
+    print(f"Preset description: {selected_preset['metadata'].get('description', 'No description available')}")
 
     return {
         "yaml": selected_preset["_source_file"],
@@ -303,13 +315,15 @@ def main():
         result = wizard(args.sources)
         preset_name = result["preset"]
         training_name = args.training_name or input("Enter a training name: ")
+        lycoris_subtype = result["lycoris_subtype"]
     else:
         preset_name = args.preset
         training_name = args.training_name
+        lycoris_subtype = None
 
     presets = load_presets(config_yaml)
     resolved = resolve_preset(presets, preset_name)
-    cmd = build_command(resolved, training_name)
+    cmd = build_command(resolved, training_name, lycoris_subtype=lycoris_subtype)
     print(cmd)
 
 
