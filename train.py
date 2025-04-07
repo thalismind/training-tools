@@ -36,7 +36,7 @@ def resolve_preset(presets, name):
     return base
 
 
-def build_command(preset, training_name):
+def build_command(preset, training_name, fp8_base=True, highvram=True, precision="bf16", threads=2):
     p = preset['parameters']
     net = p['network']
     opt = p['optimizer']
@@ -77,71 +77,76 @@ def build_command(preset, training_name):
     RESUME_WEIGHTS = f"{OUTPUT_DIR}/weights/{OUTPUT_NAME}.safetensors"
 
     launch_args = [
-        "time accelerate launch \\",
-        "    --mixed_precision bf16 \\",
-        "    --num_cpu_threads_per_process 2 \\",
-        f"    {REMOTE_ROOT}/sd-scripts/flux_train_network.py \\",
+        "time accelerate launch",
+        f"    --mixed_precision {precision}",
+        f"    --num_cpu_threads_per_process {threads}",
+        f"    {REMOTE_ROOT}/sd-scripts/flux_train_network.py",
     ]
 
     model_args = [
-        f"    --pretrained_model_name_or_path {FLUX_PATH}/flux1-dev2pro.safetensors \\",
-        f"    --clip_l {FLUX_PATH}/clip_l.safetensors \\",
-        f"    --t5xxl {FLUX_PATH}/t5xxl_fp16.safetensors \\",
-        f"    --ae {FLUX_PATH}/ae.safetensors \\",
-        "    --fp8_base \\",
-        "    --highvram \\",
+        f"    --pretrained_model_name_or_path {FLUX_PATH}/flux1-dev2pro.safetensors",
+        f"    --clip_l {FLUX_PATH}/clip_l.safetensors",
+        f"    --t5xxl {FLUX_PATH}/t5xxl_fp16.safetensors",
+        f"    --ae {FLUX_PATH}/ae.safetensors",
     ]
 
+    if fp8_base:
+        model_args.append("    --fp8_base")
+
+    if highvram:
+        model_args.append("    --highvram")
+
     cache_args = [
-        "    --cache_latents_to_disk \\",
-        "    --cache_text_encoder_outputs \\",
-        "    --cache_text_encoder_outputs_to_disk \\",
-        "    --persistent_data_loader_workers \\",
-        "    --max_data_loader_n_workers 2 \\",
+        "    --cache_latents_to_disk",
+        "    --cache_text_encoder_outputs",
+        "    --cache_text_encoder_outputs_to_disk",
+        "    --persistent_data_loader_workers",
+        f"    --max_data_loader_n_workers {threads}",
     ]
 
     save_args = [
-        "    --mixed_precision bf16 \\",
-        "    --save_precision bf16 \\",
-        "    --save_model_as safetensors \\",
+        f"    --mixed_precision {precision}",
+        f"    --save_precision {precision}",
+        "    --save_model_as safetensors",
     ]
 
     network_args = [
-        f"    --network_module {net['module']} \\",
-        f"    --network_alpha {net['alpha']} \\",
-        f"    --network_dim {net['dim']} \\",
-        "    --network_args " + " ".join(network_args_strs) + " \\",
+        f"    --network_module {net['module']}",
+        f"    --network_alpha {net['alpha']}",
+        f"    --network_dim {net['dim']}",
+        "    --network_args",
+        "        " + " \\\n        ".join(network_args_strs),
     ]
 
     optimizer_args = [
-         f"    --optimizer_type {opt_type} \\",
-        "    --optimizer_args \\",
-        "        " + " \\\n        ".join(opt_args_strs) + " \\",
+         f"    --optimizer_type {opt_type}",
+        "    --optimizer_args",
+        "        " + " \\\n        ".join(opt_args_strs),
     ]
 
     scheduler_args = [
-        f"    --lr_scheduler {lr_sched} \\",
-        f"    --lr_scheduler_num_cycles {num_cycles} \\",
+        f"    --lr_scheduler {lr_sched}",
+        f"    --lr_scheduler_num_cycles {num_cycles}",
     ]
 
     train_args = [
-        "    --discrete_flow_shift 3.1582 \\",
-        "    --gradient_checkpointing \\",
-        "    --guidance_scale 1.0 \\",
-        f"    --learning_rate {p['learning_rate']} \\",
-        "    --loss_type l2 \\",
-        "    --model_prediction_type raw \\",
-        f"    --noise_offset {p.get('noise_offset', 0.0)} \\",
-        "    --sdpa \\",
-        "    --seed 42 \\",
-        f"    --timestep_sampling {p['timestep_sampling']} \\",
+        "    --discrete_flow_shift 3.1582",
+        "    --gradient_checkpointing",
+        "    --guidance_scale 1.0",
+        f"    --learning_rate {p['learning_rate']}",
+        "    --loss_type l2",
+        "    --model_prediction_type raw",
+        f"    --noise_offset {p.get('noise_offset', 0.0)}",
+        "    --sdpa",
+        "    --seed 42",
+        f"    --timestep_sampling {p['timestep_sampling']}",
     ]
 
     min_snr_gamma = p.get('min_snr_gamma', 5)
     if min_snr_gamma > 0:
         train_args.extend([
-          "    --huber_schedule=snr \\",
-          f"    --min_snr_gamma={p.get('min_snr_gamma', 5)} \\",
+          "    --huber_schedule=snr",
+          f"    --min_snr_gamma={p.get('min_snr_gamma', 5)}",
         ])
 
     lines = [
@@ -153,18 +158,22 @@ def build_command(preset, training_name):
         *optimizer_args,
         *scheduler_args,
         *train_args,
-        f"    --max_train_steps {p['max_steps']} \\",
-        f"    --save_every_n_steps {p['save_every_n_steps']} \\",
-        f"    --dataset_config {DATASET_CONFIG} \\",
-        f"    --output_dir {OUTPUT_DIR} \\",
-        f"    --output_name {OUTPUT_NAME} \\",
-        f"    --sample_every_n_steps {p['sample_every_n_steps']} \\",
-        f"    --sample_prompts {REMOTE_ROOT}/config/{training_name}/sample-prompts.txt \\",
-        "    --log_with=all \\",
-        f"    --logging_dir {OUTPUT_DIR}/logging/{OUTPUT_NAME} \\",
-        f"    --wandb_run_name={training_name}-{opt_type_name}-{lr_sched}-{timestamp} \\",
+        f"    --max_train_steps {p['max_steps']}",
+        f"    --save_every_n_steps {p['save_every_n_steps']}",
+        f"    --dataset_config {DATASET_CONFIG}",
+        f"    --output_dir {OUTPUT_DIR}",
+        f"    --output_name {OUTPUT_NAME}",
+        f"    --sample_every_n_steps {p['sample_every_n_steps']}",
+        f"    --sample_prompts {REMOTE_ROOT}/config/{training_name}/sample-prompts.txt",
+        "    --log_with=all",
+        f"    --logging_dir {OUTPUT_DIR}/logging/{OUTPUT_NAME}",
+        f"    --wandb_run_name={training_name}-{opt_type_name}-{lr_sched}-{timestamp}",
         f"    {RESUME_WEIGHTS}"
     ]
+
+    # Add backslash to the end of each line except the last one
+    slashes = [" \\"] * (len(lines) - 1) + [""]
+    lines = [line + slash for line, slash in zip(lines, slashes)]
 
     return "\n".join(lines)
 
@@ -248,7 +257,7 @@ def wizard(yaml_files):
     ])
     if not confirm_q["confirm"]:
         print("Aborting.")
-        return
+        raise SystemExit
 
     # Ask the user to confirm if the preset is not stable
     if not selected_preset['metadata'].get("stable", False):
@@ -257,7 +266,7 @@ def wizard(yaml_files):
         ])
         if not confirm_stable_q["confirm_stable"]:
             print("Aborting.")
-            return
+            raise SystemExit
 
     print(f"Using preset: {selected_preset['name']}")
 
@@ -292,15 +301,13 @@ def main():
 
     if args.wizard:
         result = wizard(args.sources)
-        yaml_files = [result["yaml"]]
         preset_name = result["preset"]
         training_name = args.training_name or input("Enter a training name: ")
     else:
-        yaml_files = args.sources
         preset_name = args.preset
         training_name = args.training_name
 
-    presets = load_presets(yaml_files)
+    presets = load_presets(config_yaml)
     resolved = resolve_preset(presets, preset_name)
     cmd = build_command(resolved, training_name)
     print(cmd)
