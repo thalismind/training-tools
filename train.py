@@ -1,6 +1,8 @@
 import yaml
 import argparse
+from collections import defaultdict
 from datetime import datetime
+from glob import glob
 
 
 def load_presets(yaml_paths):
@@ -167,11 +169,9 @@ def build_command(preset, training_name):
     return "\n".join(lines)
 
 
-import inquirer
-import yaml
-from collections import defaultdict
-
 def wizard(yaml_files):
+    import inquirer
+
     # Load all presets from given YAML files and group them by metadata.category
     all_presets = []
     for yaml_file in yaml_files:
@@ -221,11 +221,16 @@ def wizard(yaml_files):
         ])
         lycoris_subtype = subtype_q["lycoris_subtype"]
 
-    # Ask whether to enable min_snr_gamma
+    # Ask for a min_snr_gamma value
     snr_gamma_q = inquirer.prompt([
-        inquirer.Confirm("snr_gamma", message="Enable min SNR gamma?", default=True)
+        inquirer.Text("snr_gamma", message="What minimum SNR gamma value do you want to use?", default="5")
     ])
-    snr_gamma_enabled = snr_gamma_q["snr_gamma"]
+    snr_gamma = float(snr_gamma_q["snr_gamma"])
+    snr_gamma_enabled = snr_gamma > 0
+    if snr_gamma_enabled:
+        print(f"Using min_snr_gamma={snr_gamma}")
+    else:
+        print("Not using min_snr_gamma")
 
     # Choose a matching preset name based on complexity
     suffix = "_simple" if complexity == "simple" else "_complex"
@@ -245,12 +250,21 @@ def wizard(yaml_files):
         print("Aborting.")
         return
 
+    # Ask the user to confirm if the preset is not stable
+    if not selected_preset['metadata'].get("stable", False):
+        confirm_stable_q = inquirer.prompt([
+            inquirer.Confirm("confirm_stable", message="The selected preset is not stable. Do you want to continue?", default=False)
+        ])
+        if not confirm_stable_q["confirm_stable"]:
+            print("Aborting.")
+            return
+
     print(f"Using preset: {selected_preset['name']}")
 
     return {
         "yaml": selected_preset["_source_file"],
         "preset": selected_preset["name"],
-        "snr_gamma": snr_gamma_enabled,
+        "snr_gamma": snr_gamma,
         "lora_type": lora_type,
         "lycoris_subtype": lycoris_subtype,
         # "dataset_size": dataset_size,
@@ -258,8 +272,16 @@ def wizard(yaml_files):
 
 
 def main():
+    # Get yaml files in the config directory
+    config_yaml = glob("config/*.yaml")
+    print(f"Found {len(config_yaml)} YAML files in config directory: {', '.join(config_yaml)}")
+    if not config_yaml:
+        print("No YAML files found in config directory.")
+        return
+
+    # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sources", nargs='+', default=["config/effects.yaml", "config/characters.yaml"],
+    parser.add_argument("--sources", nargs='+', default=config_yaml,
                         help="YAML files to load presets from")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--preset", help="Name of the preset to use")
