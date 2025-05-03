@@ -120,8 +120,10 @@ def build_command(preset, training_name, fp8_base=True, highvram=True, precision
         "    --save_model_as safetensors",
     ]
 
+    network_module = "networks.lora_flux" if lycoris_subtype is None else "lycoris.kohya"
+
     network_args = [
-        f"    --network_module {net['module']}",
+        f"    --network_module {network_module}",
         f"    --network_alpha {net['alpha']}",
         f"    --network_dim {net['dim']}",
         "    --network_args",
