@@ -115,6 +115,83 @@ Options:
   --network-train-unet-only  Train UNet only
 ```
 
+### Run Scripts
+
+After running the setup script, you can use the convenient run scripts that automatically activate the virtual environment and run the training command. These scripts output only the training command, making them suitable for use in larger scripts or subshells.
+
+#### Basic Run Scripts
+
+**Linux/macOS:**
+```bash
+# Run with wizard mode
+./run.sh --wizard <training-name>
+
+# Run with preset
+./run.sh --preset <preset-name> <training-name>
+
+# Run with additional arguments
+./run.sh --preset simple my-training --batch-size 2 --total-images 2000
+```
+
+**Windows:**
+```cmd
+# Run with wizard mode
+run.bat --wizard <training-name>
+
+# Run with preset
+run.bat --preset <preset-name> <training-name>
+
+# Run with additional arguments
+run.bat --preset simple my-training --batch-size 2 --total-images 2000
+```
+
+#### Convenience Scripts
+
+For even easier usage, you can use the convenience scripts in the `scripts/` directory:
+
+**Linux/macOS:**
+```bash
+# Run wizard mode
+./scripts/run_wizard.sh <training-name>
+
+# Run with preset
+./scripts/run_preset.sh <preset-name> <training-name>
+
+# Run with additional arguments
+./scripts/run_preset.sh complex my-training --batch-size 2 --total-images 2000
+```
+
+**Windows:**
+```cmd
+# Run wizard mode
+scripts\run_wizard.bat <training-name>
+
+# Run with preset
+scripts\run_preset.bat <preset-name> <training-name>
+
+# Run with additional arguments
+scripts\run_preset.bat complex my-training --batch-size 2 --total-images 2000
+```
+
+#### Integration with Larger Scripts
+
+The run scripts are designed to output only the training command, making them perfect for integration:
+
+```bash
+#!/bin/bash
+# Example: Run multiple training jobs
+
+# Run a simple training
+SIMPLE_CMD=$(./run.sh --preset simple simple-training)
+echo "Running: $SIMPLE_CMD"
+eval $SIMPLE_CMD
+
+# Run a complex training
+COMPLEX_CMD=$(./run.sh --preset complex complex-training --batch-size 2)
+echo "Running: $COMPLEX_CMD"
+eval $COMPLEX_CMD
+```
+
 ## Configuration
 
 Training configurations are defined in YAML files in the `config/` directory. Each configuration file contains presets with training parameters.
@@ -233,12 +310,20 @@ training-tools/
 ├── train.py              # Main training script
 ├── setup.sh              # Linux/macOS setup script
 ├── setup.bat             # Windows setup script
+├── run.sh                # Linux/macOS run script
+├── run.bat               # Windows run script
 ├── requirements.txt      # Core dependencies
 ├── requirements-dev.txt  # Development dependencies
 ├── README.md            # This file
-└── config/              # Configuration directory
-    ├── sample.yaml      # Sample configuration
-    └── *.yaml           # Your configuration files
+├── config/              # Configuration directory
+│   ├── sample.yaml      # Sample configuration
+│   └── *.yaml           # Your configuration files
+└── scripts/             # Convenience scripts
+    ├── run_wizard.sh    # Wizard mode convenience script
+    ├── run_preset.sh    # Preset mode convenience script
+    ├── run_wizard.bat   # Windows wizard script
+    ├── run_preset.bat   # Windows preset script
+    └── run_tests.sh     # Test runner
 ```
 
 ## Troubleshooting
