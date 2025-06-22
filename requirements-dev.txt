@@ -1,0 +1,17 @@
+# Development dependencies for the training script
+-r requirements.txt
+
+# Type checking and linting
+mypy>=1.0.0
+types-PyYAML>=6.0.0
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.12.0
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Documentation
+sphinx>=6.0.0
+sphinx-rtd-theme>=1.2.0

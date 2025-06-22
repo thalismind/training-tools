@@ -1,0 +1,36 @@
+presets:
+  - name: default
+    metadata:
+      category: "default"
+      description: "Default training configuration for all model families"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      max_steps: 1200
+      min_snr_gamma: 5.0
+      noise_offset: 0.0
+      save_every_n_steps: 100
+      sample_every_n_steps: 5000
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 4
+        dim: 32
+        module: "networks.lora"
+        train_t5xxl: false
+        split_qkv: false
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+      batch_size: 1
+      network_train_unet_only: false

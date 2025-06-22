@@ -7,7 +7,7 @@ presets:
       stable: true
       version: "1.0"
     parameters:
-      learning_rate: 1
+      learning_rate: 1e-4
       max_steps: 750
       min_snr_gamma: 5.0
       noise_offset: 0.1

@@ -1,0 +1,346 @@
+presets:
+  # Flux model presets
+  - name: flux_adafactor_simple
+    metadata:
+      category: "flux"
+      description: "Flux model with Adafactor optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      max_steps: 1200
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "adafactor"
+        args:
+          weight_decay: 0.01
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: flux_prodigy_simple
+    metadata:
+      category: "flux"
+      description: "Flux model with Prodigy optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      max_steps: 1200
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: flux_ranger_simple
+    metadata:
+      category: "flux"
+      description: "Flux model with Ranger optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      max_steps: 1200
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "ranger"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          num_iterations: 5
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: flux_lokr_simple
+    metadata:
+      category: "flux"
+      description: "Flux model with LoKR (LyCORIS) for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      max_steps: 1200
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 16
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  # SDXL model presets
+  - name: sdxl_prodigy_simple
+    metadata:
+      category: "sdxl"
+      description: "SDXL model with Prodigy optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "sdxl"
+      learning_rate: 1.0
+      max_epochs: 5
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      network_train_unet_only: true
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: sdxl_adafactor_simple
+    metadata:
+      category: "sdxl"
+      description: "SDXL model with Adafactor optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "sdxl"
+      learning_rate: 1.0
+      max_epochs: 5
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      network_train_unet_only: true
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "adafactor"
+        args:
+          weight_decay: 0.01
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  # Pony model presets
+  - name: pony_prodigy_simple
+    metadata:
+      category: "pony"
+      description: "Pony model with Prodigy optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "pony"
+      learning_rate: 1.0
+      max_steps: 750
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      network_train_unet_only: true
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: true
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: pony_adafactor_simple
+    metadata:
+      category: "pony"
+      description: "Pony model with Adafactor optimizer for simple subjects"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "pony"
+      learning_rate: 1.0
+      max_steps: 750
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      network_train_unet_only: true
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "adafactor"
+        args:
+          weight_decay: 0.01
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  # Examples with total_images and batch_size
+  - name: flux_total_images_example
+    metadata:
+      category: "flux"
+      description: "Flux model using total_images for consistent training across datasets"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "flux"
+      learning_rate: 1e-4
+      total_images: 2000  # Process 2000 total images
+      batch_size: 2       # With batch size 2 = 1000 steps
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      timestep_sampling: "sigmoid"
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  - name: sdxl_epochs_example
+    metadata:
+      category: "sdxl"
+      description: "SDXL model using epochs for traditional training approach"
+      stable: true
+      version: "1.0"
+    parameters:
+      model_family: "sdxl"
+      learning_rate: 1.0
+      max_epochs: 10      # Train for 10 epochs
+      batch_size: 1       # With batch size 1
+      min_snr_gamma: 5.0
+      noise_offset: 0.1
+      save_every_n_steps: 200
+      sample_every_n_steps: 100
+      network:
+        alpha: 4
+        dim: 32
+      optimizer:
+        name: "prodigy"
+        args:
+          decouple: true
+          weight_decay: 0.01
+          betas: [0.9, 0.999]
+          use_bias_correction: false
+          safeguard_warmup: false
+          d_coef: 2
+      scheduler:
+        name: "cosine"
+        cycles: 1
+
+  # Complex variants (inheriting from simple ones)
+  - name: flux_adafactor_complex
+    metadata:
+      category: "flux"
+      description: "Flux model with Adafactor optimizer for complex subjects"
+      stable: true
+      version: "1.0"
+    inherits:
+      - "flux_adafactor_simple"
+    parameters:
+      max_steps: 2000
+      learning_rate: 5e-5
+      network:
+        alpha: 8
+        dim: 64
+
+  - name: sdxl_prodigy_complex
+    metadata:
+      category: "sdxl"
+      description: "SDXL model with Prodigy optimizer for complex subjects"
+      stable: true
+      version: "1.0"
+    inherits:
+      - "sdxl_prodigy_simple"
+    parameters:
+      max_epochs: 10
+      learning_rate: 0.5
+      network:
+        alpha: 8
+        dim: 64
+
+  - name: pony_prodigy_complex
+    metadata:
+      category: "pony"
+      description: "Pony model with Prodigy optimizer for complex subjects"
+      stable: true
+      version: "1.0"
+    inherits:
+      - "pony_prodigy_simple"
+    parameters:
+      max_steps: 1500
+      learning_rate: 0.5
+      network:
+        alpha: 8
+        dim: 64
