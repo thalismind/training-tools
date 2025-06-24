@@ -1,5 +1,6 @@
 import yaml
 import argparse
+import sys
 from collections import defaultdict
 from datetime import datetime
 from glob import glob
@@ -106,7 +107,7 @@ def load_presets(yaml_paths: List[str]) -> Dict[str, Dict[str, Any]]:
                     if preset_name:
                         all_presets[preset_name] = preset_data
         except Exception as e:
-            print(f"Error loading config file {path}: {e}")
+            print(f"Error loading config file {path}: {e}", file=sys.stderr)
             raise
 
     # Second pass: resolve inheritance and validate
@@ -118,7 +119,7 @@ def load_presets(yaml_paths: List[str]) -> Dict[str, Dict[str, Any]]:
             validated_preset = Preset(**resolved)
             resolved_presets[preset_name] = validated_preset.model_dump()
         except Exception as e:
-            print(f"Error resolving preset '{preset_name}': {e}")
+            print(f"Error resolving preset '{preset_name}': {e}", file=sys.stderr)
             raise
 
     return resolved_presets
@@ -261,10 +262,10 @@ def build_command(
     step_count = get_effective_step_count(p)
     # Training duration string
     if 'total_images' in p:
-        print(f"Calculated {step_count} steps from {p['total_images']} total images with batch size {batch_size}")
+        print(f"Calculated {step_count} steps from {p['total_images']} total images with batch size {batch_size}", file=sys.stderr)
         training_duration = f"    --max_train_steps {step_count}"
     elif 'max_steps' in p:
-        training_duration = f"    --max_train_steps {step_count}"
+        training_duration = f"    --max_train_steps {p['max_steps']}"
     elif 'max_epochs' in p:
         training_duration = f"    --max_train_epochs {p['max_epochs']}"
     else:
@@ -567,9 +568,9 @@ def wizard(yaml_files: List[str]) -> Dict[str, Any]:
     snr_gamma = float(snr_gamma_q["snr_gamma"])
     snr_gamma_enabled = snr_gamma > 0
     if snr_gamma_enabled:
-        print(f"Using min_snr_gamma={snr_gamma}")
+        print(f"Using min_snr_gamma={snr_gamma}", file=sys.stderr)
     else:
-        print("Not using min_snr_gamma")
+        print("Not using min_snr_gamma", file=sys.stderr)
 
     # Ask about resuming training
     resume_q = inquirer.prompt([
@@ -580,7 +581,7 @@ def wizard(yaml_files: List[str]) -> Dict[str, Any]:
     # Choose a matching preset name based on complexity
     suffix = "_simple" if complexity == "simple" else "_complex"
     candidates = [p for p in category_map[selected_category] if p["name"].endswith(suffix)]
-    print(f"Found {len(candidates)} candidates for {suffix} in {selected_category}: {', '.join(p['name'] for p in candidates)}")
+    print(f"Found {len(candidates)} candidates for {suffix} in {selected_category}: {', '.join(p['name'] for p in candidates)}", file=sys.stderr)
 
     if not candidates:
         selected_preset = category_map[selected_category][0]
@@ -592,7 +593,7 @@ def wizard(yaml_files: List[str]) -> Dict[str, Any]:
         inquirer.Confirm("confirm", message=f"Use preset '{selected_preset['name']}'?", default=True)
     ])
     if not confirm_q["confirm"]:
-        print("Aborting.")
+        print("Aborting.", file=sys.stderr)
         raise SystemExit
 
     # Ask the user to confirm if the preset is not stable
@@ -601,12 +602,12 @@ def wizard(yaml_files: List[str]) -> Dict[str, Any]:
             inquirer.Confirm("confirm_stable", message="The selected preset is not stable. Do you want to continue?", default=False)
         ])
         if not confirm_stable_q["confirm_stable"]:
-            print("Aborting.")
+            print("Aborting.", file=sys.stderr)
             raise SystemExit
 
-    print(f"Using preset: {selected_preset['name']}")
-    print(f"Preset source file: {selected_preset['_source_file']}")
-    print(f"Preset description: {selected_preset['metadata'].get('description', 'No description available')}")
+    print(f"Using preset: {selected_preset['name']}", file=sys.stderr)
+    print(f"Preset source file: {selected_preset['_source_file']}", file=sys.stderr)
+    print(f"Preset description: {selected_preset['metadata'].get('description', 'No description available')}", file=sys.stderr)
 
     return {
         "yaml": selected_preset["_source_file"],
@@ -625,13 +626,63 @@ def wizard(yaml_files: List[str]) -> Dict[str, Any]:
     }
 
 
+def save_final_configuration(
+    resolved_config: Dict[str, Any],
+    training_name: str,
+    preset_name: str,
+    vram_mode: VRAMMode,
+    lycoris_subtype: Optional[LycorisSubtype],
+    resume_from: Optional[str]
+) -> str:
+    """Save the final configuration to a YAML file for later analysis."""
+    timestamp = int(datetime.now().timestamp())
+
+    # Create a new preset name for the final configuration
+    final_preset_name = f"{training_name}_{timestamp}"
+
+    # Create the final configuration
+    final_config = {
+        "name": final_preset_name,
+        "metadata": {
+            "category": "generated",
+            "description": f"Auto-generated configuration for training run '{training_name}' based on preset '{preset_name}'",
+            "stable": False,
+            "version": "1.0",
+            "generated_at": datetime.now().isoformat(),
+            "original_preset": preset_name,
+            "training_name": training_name,
+            "vram_mode": vram_mode,
+            "lycoris_subtype": lycoris_subtype,
+            "resume_from": resume_from
+        },
+        "parameters": resolved_config["parameters"]
+    }
+
+    # Create the full config file structure
+    config_file = {
+        "presets": [final_config]
+    }
+
+    # Ensure the output directory exists
+    output_dir = "config/generated"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save to YAML file
+    filename = f"{output_dir}/{training_name}_{timestamp}.yaml"
+    with open(filename, 'w') as f:
+        yaml.dump(config_file, f, default_flow_style=False, sort_keys=False, indent=2)
+
+    print(f"Saved final configuration to: {filename}", file=sys.stderr)
+    return filename
+
+
 def main() -> None:
     """Main entry point for the training script."""
     # Get yaml files in the config directory
     config_yaml = glob("config/*.yaml")
-    print(f"Found {len(config_yaml)} YAML files in config directory: {', '.join(config_yaml)}")
+    print(f"Found {len(config_yaml)} YAML files in config directory: {', '.join(config_yaml)}", file=sys.stderr)
     if not config_yaml:
-        print("No YAML files found in config directory.")
+        print("No YAML files found in config directory.", file=sys.stderr)
         return
 
     # Parse command line arguments
@@ -659,6 +710,16 @@ def main() -> None:
                         help="VRAM mode (highvram, lowvram, or none)")
     parser.add_argument("--network-train-unet-only", action="store_true",
                         help="Train UNet only")
+    parser.add_argument("--min-snr-gamma", type=float,
+                        help="Minimum SNR gamma value")
+    parser.add_argument("--noise-offset", type=float,
+                        help="Noise offset value")
+    parser.add_argument("--learning-rate", type=float,
+                        help="Learning rate (overrides preset)")
+    parser.add_argument("--save-every-n-steps", type=int,
+                        help="Save every N steps")
+    parser.add_argument("--sample-every-n-steps", type=int,
+                        help="Sample every N steps")
     parser.add_argument("training_name", help="Name of the training run")
     args = parser.parse_args()
 
@@ -675,6 +736,7 @@ def main() -> None:
         max_epochs = result["max_epochs"]
         vram_mode = result["vram_mode"]
         network_train_unet_only = result["network_train_unet_only"]
+        min_snr_gamma = result["snr_gamma"]
     else:
         preset_name = args.preset
         training_name = args.training_name
@@ -687,8 +749,9 @@ def main() -> None:
         max_epochs = args.max_epochs
         vram_mode = args.vram_mode
         network_train_unet_only = args.network_train_unet_only
+        min_snr_gamma = args.min_snr_gamma
 
-    presets = load_presets(config_yaml)
+    presets = load_presets(args.sources)
     resolved = resolve_preset(presets, preset_name)
 
     # Update the preset with command line overrides
@@ -704,6 +767,19 @@ def main() -> None:
         resolved['parameters']['max_epochs'] = max_epochs
     if network_train_unet_only:
         resolved['parameters']['network_train_unet_only'] = network_train_unet_only
+    if min_snr_gamma is not None:
+        resolved['parameters']['min_snr_gamma'] = min_snr_gamma
+    if args.noise_offset is not None:
+        resolved['parameters']['noise_offset'] = args.noise_offset
+    if args.learning_rate is not None:
+        resolved['parameters']['learning_rate'] = args.learning_rate
+    if args.save_every_n_steps is not None:
+        resolved['parameters']['save_every_n_steps'] = args.save_every_n_steps
+    if args.sample_every_n_steps is not None:
+        resolved['parameters']['sample_every_n_steps'] = args.sample_every_n_steps
+
+    # Save final configuration before printing command
+    save_final_configuration(resolved, training_name, preset_name, vram_mode, lycoris_subtype, resume_from)
 
     cmd = build_command(resolved, training_name, vram_mode=vram_mode, lycoris_subtype=lycoris_subtype, resume_from=resume_from)
     print(cmd)

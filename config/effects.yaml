@@ -41,3 +41,34 @@ presets:
       scheduler:
         name: cosine_with_restarts
         cycles: 1
+  - name: world_morph
+    metadata:
+      category: "world_effects"
+      description: "Training configuration for world morphing effects"
+      flexible: true
+      stable: true
+      version: "1.0"
+    parameters:
+      learning_rate: 0.0008
+      max_steps: 160
+      network:
+        alpha: 1
+        dim: 4
+        module: flux-1-dev/lora
+      optimizer:
+        name: Adafactor
+        args:
+          relative_step: false
+          scale_parameter: false
+          warmup_init: false
+      scheduler:
+        name: constant_with_warmup
+      mixed_precision: bf16
+      gradient_accumulation_steps: 1
+      loss_type: l2
+      prior_loss_weight: 1.0
+      guidance_scale: 1.0
+      dataset_repeats: 10
+      weighting_scheme: uniform
+      huber_schedule: snr
+      discrete_flow_shift: 3.1582
